@@ -1,3 +1,5 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
+.vim.custom
+local/
