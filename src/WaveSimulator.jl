@@ -133,7 +133,7 @@ end
 function simulate(problem::WaveProblem, domain::BoxDomain{N}, tilesz; time=0.025) where N
     state = setup(problem, domain)
     Nt = ceil(Int,time/problem.dt)
-    #result = zeros(Float64, (size(state.current)..., Nt))
+    result = zeros(Float64, (size(state.current)..., Nt))
     p = Progress(Nt, .1)
     tileinds_all = collect(TileIterator(map(s->2:s-1, size(state.current)), tilesz))
     for t in 1:Nt
@@ -145,9 +145,9 @@ function simulate(problem::WaveProblem, domain::BoxDomain{N}, tilesz; time=0.025
         state.previous, state.current = state.current, state.previous
         state.t += problem.dt
         state.iter += 1
-     #   copy!(view(result, ntuple(i->:,Val{N})..., t), state.current)
+        copy!(view(result, ntuple(i->:,Val{N})..., t), state.current)
     end
-    state #result
+    result #state #result
 end
 
 function simulate(problem::WaveProblem, domain::BoxDomain{N}; time=0.025) where N
