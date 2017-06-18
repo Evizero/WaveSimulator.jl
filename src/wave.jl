@@ -1,28 +1,31 @@
-struct Wave{T<:AbstractFloat}
+struct UniformWave{N,T<:AbstractFloat} <: Wave{N,T}
     c::T    # constant wave speed
-    fₘₐₓ::T # max supported frequency
+    fmax::T # max supported frequency
+    dx::T   # spatial step (c*dt/λ)
+    dt::T   # time step (dx*λ/c)
+    λ::T    # courant number c*dt/dx
 end
 
-function Wave(::Type{T}=Float64; c=340, fmax=2e3) where T<:AbstractFloat
-    Wave(T(c), T(fmax))
-end
-
-function sampling_settings(wave::Wave{T}, N, lambda=-1, dt=-1, dx=-1) where T <: AbstractFloat
+function (::Type{UniformWave{N}})(::Type{T}=Float64; c=340, fmax=-1, lambda=-1, dt=-1, dx=-1) where {N, T <: AbstractFloat}
     λ = T(lambda == -1 ? √(1/N) : lambda)
-    if dt == -1 && dx == -1
-        dₜ = T(λ / (2*wave.fₘₐₓ))
-        dₓ = T(wave.c * dₜ / λ)
+    if fmax == -1 && dt == -1 && dx == -1
+        dₜ = T(λ / (2*2e3))
+        dₓ = T(c * dₜ / λ)
+    elseif dt == -1 && dx == -1
+        dₜ = T(λ / (2*fmax))
+        dₓ = T(c * dₜ / λ)
     elseif dt != -1 && dx == -1
         dₜ = T(dt)
-        dₓ = T(wave.c * dₜ / λ)
-        warn("Overwriting specified fₘₐₓ = $(round(wave.fₘₐₓ/1000,2)) kHz with implied fₘₐₓ = $(round(λ/(2*dₜ)/1000,2)) kHz by setting dₜ = $(dₜ) s")
-    elseif dt == -1 && dx == -1
+        dₓ = T(c * dₜ / λ)
+    elseif dt == -1 && dx != -1
         dₓ = T(dx)
-        dₜ = T(dₓ * λ / wave.c)
+        dₜ = T(dₓ * λ / c)
     elseif dt != -1 && dx != -1
         dₜ = T(dt)
         dₓ = T(dx)
-        λ = T(wave.c * dₜ / dₓ)
+        λ = T(c * dₜ / dₓ)
     end
-    λ, dₜ, dₓ
+    fₘₐₓ = T(λ / (2*dₜ))
+    fmax == -1 || fₘₐₓ ≈ fmax || warn("Overwriting specified fₘₐₓ = $(round(fmax/1000,2)) kHz with implied fₘₐₓ = $(round(fₘₐₓ/1000,2)) kHz")
+    UniformWave{N,T}(c, fₘₐₓ, dₓ, dₜ, λ)
 end

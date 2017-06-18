@@ -1,6 +1,41 @@
+struct CPU1Backend{R<:CPU1} <: Backend{R}
+    resource::R
+end
+
+function backend_init(resource::CPU1, state, sim)
+    CPU1Backend(resource)
+end
+
+function update!(state::State, backend::CPU1Backend, sim)
+    cpu_kernel!(state, backend.resource, sim)
+end
+
+struct CPUThreadsBackend{R<:CPUThreads,T} <: Backend{R}
+    resource::R
+    tiles::T
+end
+
+function backend_init(r::CPUThreads{TileSize{N}}, state, sim) where N
+    inds = map(s->2:s-1, size(state.current))
+    tiles = collect(TileIterator(inds, r.settings.dims))
+    CPUThreadsBackend(r, tiles)
+end
+
+function backend_init(r::CPUThreads{NTuple{N,Int}}, state, sim) where N
+    backend_init(CPUThreads(TileSize(r.settings)), state, sim)
+end
+
+function update!(state::State, backend::CPUThreadsBackend, sim)
+    tiles = backend.tiles
+    Threads.@threads for i = 1:length(tiles)
+        inds = tiles[i]
+        cpu_kernel!(state, CPUThreads(inds), sim)
+    end
+end
+
 function cpu_kernel_impl(N, indices=:(current_domain))
     quote
-        @inbounds @nloops $N I $indices begin
+        @nloops $N I $indices begin
             @nexprs $N w->(
                 q₊_w = @nref($N, q, i -> i==w ? I_i+1 : I_i);
                 q₋_w = @nref($N, q, i -> i==w ? I_i-1 : I_i)
@@ -28,12 +63,14 @@ function cpu_kernel_impl(N, indices=:(current_domain))
     end
 end
 
-@generated function update!(
+@generated function cpu_kernel!(
+        state::State{N,T,D},
         resource::Union{CPU1,CPUThreads},
-        state::State{N,T,D}) where {N, T, D <: HyperCube{N}}
+        sim) where {N, T, D <: HyperCube{N}}
+    SETUP  = resource<:CPUThreads ? :(inds = resource.settings) : :()
     REGION = resource<:CPUThreads ? :(i->inds[i]) : :(i->2:size(Ψₜ₊₁,i)-1)
     quote
-        λ = state.λ
+        λ = sim.wave.λ
         λsq = λ^2
         λhalf = λ/2
         γ = state.domain.γ
@@ -41,61 +78,8 @@ end
         Ψₜ   = state.current
         Ψₜ₊₁ = state.previous
         q    = state.q
-        $(resource<:CPUThreads ? :(inds = resource.settings) : :())
+        $(SETUP)
         $(cpu_kernel_impl(N, REGION))
         state
     end
-end
-
-update!(state::State, args...) = update!(CPU1(), state, args...)
-
-function simulate(resource::Union{CPU1,CPUThreads}, wave::Wave, domain, time)
-    state = setup(wave, domain)
-    simulate!(resource, state, time)
-end
-
-function simulate!(resource::CPU1, state::State, time::Number)
-    Nt = ceil(Int, time / state.dt)
-    p = Progress(Nt, .1)
-    for _ in 1:Nt
-        update!(resource, state)
-        state.previous, state.current = state.current, state.previous
-        state.t    += state.dt
-        state.iter += 1
-        next!(p)
-    end
-    state
-end
-
-function simulate!(resource::CPUThreads{TileSize{N}}, state::State, time::Number) where N
-    Nt = ceil(Int, time / state.dt)
-    p = Progress(Nt, .1)
-    inner_inds = map(s->2:s-1, size(state.current))
-    #result = zeros(Float64, (size(state.current)..., Nt))
-    tiles = collect(TileIterator(inner_inds, resource.settings.dims))
-    for t in 1:Nt
-        next!(p)
-        Threads.@threads for i = 1:length(tiles)
-            inds = tiles[i]
-            update!(CPUThreads(inds), state)
-        end
-        state.previous, state.current = state.current, state.previous
-        state.t    += state.dt
-        state.iter += 1
-        #copy!(view(result, ntuple(i->:,Val{N})..., t), state.current)
-        next!(p)
-    end
-    state
-end
-
-function simulate!(resource::CPUThreads{NTuple{N,Int}}, state::State, time::Number) where N
-    simulate!(CPUThreads(TileSize(resource.settings)), state, time)
-end
-
-function simulate(wave::Wave, args...; resource=CPU1(), time=0.025)
-    simulate(resource, wave, args..., time)
-end
-
-function simulate!(state::State, args...; resource=CPU1(), time=0.025)
-    simulate!(resource, state, args..., time)
 end
