@@ -10,6 +10,8 @@ function update!(state::State, backend::CPU1Backend, sim)
     cpu_kernel!(state, backend.resource, sim)
 end
 
+# --------------------------------------------------------------------
+
 struct CPUThreadsBackend{R<:CPUThreads,T} <: Backend{R}
     resource::R
     tiles::T
@@ -33,9 +35,11 @@ function update!(state::State, backend::CPUThreadsBackend, sim)
     end
 end
 
+# --------------------------------------------------------------------
+
 function cpu_kernel_impl(N, indices=:(current_domain))
     quote
-        @nloops $N I $indices begin
+        @inbounds @nloops $N I $indices begin
             @nexprs $N w->(
                 q₊_w = @nref($N, q, i -> i==w ? I_i+1 : I_i);
                 q₋_w = @nref($N, q, i -> i==w ? I_i-1 : I_i)
@@ -64,16 +68,16 @@ function cpu_kernel_impl(N, indices=:(current_domain))
 end
 
 @generated function cpu_kernel!(
-        state::State{N,T,D},
+        state::BoxState{N,T},
         resource::Union{CPU1,CPUThreads},
-        sim) where {N, T, D <: HyperCube{N}}
+        sim::Simulator{N,T,W}) where {N, T, W <: UniformWave{N,T}}
     SETUP  = resource<:CPUThreads ? :(inds = resource.settings) : :()
-    REGION = resource<:CPUThreads ? :(i->inds[i]) : :(i->2:size(Ψₜ₊₁,i)-1)
+    REGION = resource<:CPUThreads ? :(i->inds[i]) : :(i->2:size(Ψₜ,i)-1)
     quote
         λ = sim.wave.λ
         λsq = λ^2
         λhalf = λ/2
-        γ = state.domain.γ
+        γ = T(state.box.γ)
         Ψₜ₋₁ = state.previous
         Ψₜ   = state.current
         Ψₜ₊₁ = state.previous
