@@ -13,8 +13,7 @@ end
 
 # --------------------------------------------------------------------
 
-function simulate!(state::State, sim::Simulator)
-    backend = backend_init(sim.resource, state, sim)
+function simulate!(state::State, backend::Backend, sim::Simulator)
     foreach(hook -> hook_init!(hook, state, sim), sim.hooks)
     for _ in 1:sim.maxiter
         update!(state, backend, sim)
@@ -29,8 +28,10 @@ end
 # --------------------------------------------------------------------
 
 function simulate(f0, sim::Simulator{N,T}, domain::Domain{N}) where {N,T}
-    state = state_init(f0, sim.wave, domain)
-    simulate!(state, sim)
+    backend = backend_init(sim.resource, domain, sim)
+    state   = state_init(f0, backend, domain, sim)
+    simulate!(state, backend, sim)
+    # backend_cleanup!(backend, state, sim)
 end
 
 function simulate(sim::Simulator{N,T}, domain::Domain{N}; f0 = (I...)->zero(T)) where {N,T}

@@ -45,18 +45,24 @@ function signal_response(signal; showvalues=true, fps=5, duration=2., resource=C
     speaker = PointSpeaker((3,1,2), signal)
     micro = PointMicrophone(3,7,2)
     sim = Simulator(wave, StoreSnapshots(1/fps), speaker, micro, ProgressDisplay(0.1, showvalues), resource=resource, duration=duration)
-    state = WaveSimulator.state_init(wave, BoxDomain(6,8,4,gamma=gamma));
-    simulate!(state, sim)
-    speaker.signal, micro.signal, state, sim
+    domain = BoxDomain(6,8,4, gamma=gamma)
+    backend = backend_init(sim.resource, domain, sim)
+    state = state_init(backend, domain, sim);
+    simulate!(state, backend, sim)
+    backend_cleanup!(backend, state, sim)
+    speaker.signal, micro.signal, sim
 end
 
-function impulse_response(; duration=2., resource=CPUThreads((100,100,1)), kw...)
+function impulse_response(; gamma=0., duration=2., resource=CPUThreads((100,100,1)), kw...)
     micro_in  = PointMicrophone(4,5,3)
     micro_out = PointMicrophone(1.7,2.8,0.9)
     sim = Simulator(UniformWave{3}(;kw...), micro_in, micro_out, ProgressDisplay(), resource=resource, duration=duration)
-    state = WaveSimulator.state_init(sim.wave, BoxDomain(6,8,4));
+    domain = BoxDomain(6,8,4, gamma=gamma)
+    backend = backend_init(sim.resource, domain, sim)
+    state = state_init(backend, domain, sim);
     gridpos = floor.(Int, (4,5,3) ./ sim.wave.dx) .+ 1
     state.current[gridpos...] = sim.wave.c^2 * sim.wave.dt / sim.wave.dx^3
-    simulate!(state, sim)
-    micro_in.signal, micro_out.signal, state, sim
+    simulate!(state, backend, sim)
+    backend_cleanup!(backend, state, sim)
+    micro_in.signal, micro_out.signal, sim
 end

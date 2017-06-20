@@ -37,6 +37,7 @@ mutable struct StoreSnapshots
     dt::Float64
     last::Float64
     index::Int
+    buffer
     snapshots
 
     function StoreSnapshots(dt::Number)
@@ -50,6 +51,7 @@ function hook_init!(hook::StoreSnapshots, state::State{N,T}, sim::Simulator) whe
     count = floor(Int, sim.duration / hook.dt)
     hook.last = typemin(Float64)
     hook.index = 1
+    hook.buffer = zeros(T, size(state.current))
     hook.snapshots = zeros(T, (size(state.current)..., count))
     hook
 end
@@ -57,7 +59,8 @@ end
 function hook_update!(hook::StoreSnapshots, state::State{N}, sim::Simulator) where N
     if state.t - (hook.last + hook.dt) >= 0
         if hook.index <= size(hook.snapshots, ndims(hook.snapshots))
-            copy!(view(hook.snapshots, ntuple(_->:,Val{N})..., hook.index), state.current)
+            copy!(hook.buffer, state.current)
+            copy!(view(hook.snapshots, ntuple(_->:,Val{N})..., hook.index), hook.buffer)
             hook.index += 1
         end
         hook.last = state.t

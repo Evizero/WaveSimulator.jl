@@ -1,8 +1,8 @@
-struct CPU1Backend{R<:CPU1} <: Backend{R}
+struct CPU1Backend{R<:CPU1} <: CPUBackend{R}
     resource::R
 end
 
-function backend_init(resource::CPU1, state, sim)
+function backend_init(resource::CPU1, domain, sim)
     CPU1Backend(resource)
 end
 
@@ -12,20 +12,27 @@ end
 
 # --------------------------------------------------------------------
 
-struct CPUThreadsBackend{R<:CPUThreads,T} <: Backend{R}
+struct CPUThreadsBackend{R<:CPUThreads,T} <: CPUBackend{R}
     resource::R
     tiles::T
 end
 
-function backend_init(r::CPUThreads{TileSize{N}}, state, sim) where N
-    inds = map(s->2:s-1, size(state.current))
+function backend_init(r::CPUThreads{TileSize{N}}, domain::Domain, sim) where N
+    dims = gridsize(domain, sim.wave.dx)
+    inds = map(s->2:s-1, dims)
     tiles = collect(TileIterator(inds, r.settings.dims))
     CPUThreadsBackend(r, tiles)
 end
 
-function backend_init(r::CPUThreads{NTuple{N,Int}}, state, sim) where N
-    backend_init(CPUThreads(TileSize(r.settings)), state, sim)
+function backend_init(r::CPUThreads{NTuple{N,Int}}, domain::Domain, sim) where N
+    backend_init(CPUThreads(TileSize(r.settings)), domain, sim)
 end
+
+function backend_cleanup!(backend::CPUBackend, state, sim)
+    nothing
+end
+
+move_backend(A::AbstractArray, backend::CPUBackend) = A
 
 function update!(state::State, backend::CPUThreadsBackend, sim)
     tiles = backend.tiles
