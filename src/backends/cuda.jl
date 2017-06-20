@@ -26,14 +26,16 @@ end
 
 # --------------------------------------------------------------------
 
-function update!(state::BoxState{2}, backend::CUDABackend, sim)
+function update!(state::BoxState{2,T}, backend::CUDABackend, sim) where T
     threads = (32,32)
     yblocks = ceil(Int, size(state.current,1) / threads[2])
     xblocks = ceil(Int, size(state.current,2) / threads[1])
-    @cuda ((xblocks,yblocks),threads) cuda_kernel!(
+    shmem = 2 * prod(threads.+2) * sizeof(T)
+    @cuda ((xblocks,yblocks),threads,shmem) cuda_kernel!(
         pointer(state.previous), pointer(state.current),
         pointer(state.q),
-        size(state.current)...,
+        size(state.current,1),
+        size(state.current,2),
         sim.wave.λ,
         state.box.γ)
     state
@@ -46,22 +48,47 @@ function cuda_kernel!(previous_ptr::Ptr{T}, current_ptr::Ptr{T}, q_ptr::Ptr, h::
     Ψₜ   = CuDeviceArray((h,w), current_ptr)
     Ψₜ₊₁ = CuDeviceArray((h,w), previous_ptr)
     q    = CuDeviceArray((h,w), q_ptr)
-    λsq = λ^2
+    λsq = λ*λ
     λhalf = λ/2
 
     if 1 < y < h && 1 < x < w
-        q₁₋ = q[y-1,x]
-        q₁₊ = q[y+1,x]
-        q₂₋ = q[y,x-1]
-        q₂₊ = q[y,x+1]
+        shmem = @cuDynamicSharedMem(T, (blockDim().y+2, blockDim().x+2, 2))
+        if threadIdx().y == 1 || y == 2
+            shmem[threadIdx().y,threadIdx().x+1,1]   = Ψₜ[y-1,x]
+            shmem[threadIdx().y,threadIdx().x+1,2]   = T(q[y-1,x])
+        elseif threadIdx().y == blockDim().y || y == h-1
+            shmem[threadIdx().y+2,threadIdx().x+1,1] = Ψₜ[y+1,x]
+            shmem[threadIdx().y+2,threadIdx().x+1,2] = T(q[y+1,x])
+        end
+        if threadIdx().x == 1 || x == 2
+            shmem[threadIdx().y+1,threadIdx().x,1]   = Ψₜ[y,x-1]
+            shmem[threadIdx().y+1,threadIdx().x,2]   = T(q[y,x-1])
+        elseif threadIdx().x == blockDim().x || x == w-1
+            shmem[threadIdx().y+1,threadIdx().x+2,1] = Ψₜ[y,x+1]
+            shmem[threadIdx().y+1,threadIdx().x+2,2] = T(q[y,x+1])
+        end
+        shmem[threadIdx().y+1,threadIdx().x+1,1] = Ψₜ[y,x]
+        shmem[threadIdx().y+1,threadIdx().x+1,2] = T(q[y,x])
+
+        sync_threads()
+
+        q₁₋ = shmem[threadIdx().y,  threadIdx().x+1,2]
+        q₁₊ = shmem[threadIdx().y+2,threadIdx().x+1,2]
+        q₂₋ = shmem[threadIdx().y+1,threadIdx().x,  2]
+        q₂₊ = shmem[threadIdx().y+1,threadIdx().x+2,2]
         K = q₁₋ + q₁₊ + q₂₋ + q₂₊
 
-        Q = q₁₋ * Ψₜ[y-1,x] + q₁₊ * Ψₜ[y+1,x] +
-            q₂₋ * Ψₜ[y,x-1] + q₂₊ * Ψₜ[y,x+1]
+        Ψₜₛ  = shmem[threadIdx().y+1,threadIdx().x+1,1]
+        Ψₜ₁₋ = shmem[threadIdx().y,  threadIdx().x+1,1]
+        Ψₜ₁₊ = shmem[threadIdx().y+2,threadIdx().x+1,1]
+        Ψₜ₂₋ = shmem[threadIdx().y+1,threadIdx().x,  1]
+        Ψₜ₂₊ = shmem[threadIdx().y+1,threadIdx().x+2,1]
+        Q = q₁₋ * Ψₜ₁₋ + q₁₊ * Ψₜ₁₊ +
+            q₂₋ * Ψₜ₂₋ + q₂₊ * Ψₜ₂₊
 
         γ̄ = γ * ((1-q₁₋) + (1-q₁₊) + (1-q₂₋) + (1-q₂₊))
 
-        Ψₜ₊₁[y,x] = 1/(1+λhalf*γ̄) * ((2-λsq*K) * Ψₜ[y,x] + (λhalf*γ̄-1) * Ψₜ₋₁[y,x] + λsq*Q)
+        Ψₜ₊₁[y,x] = 1/(1+λhalf*γ̄) * ((2-λsq*K) * Ψₜₛ + (λhalf*γ̄-1) * Ψₜ₋₁[y,x] + λsq*Q)
     end
 
     return nothing
@@ -89,10 +116,10 @@ function cuda_kernel!(previous_ptr::Ptr{T}, current_ptr::Ptr{T}, q_ptr::Ptr, h::
     Ψₜ   = CuDeviceArray((h,w,v), current_ptr)
     Ψₜ₊₁ = CuDeviceArray((h,w,v), previous_ptr)
     q    = CuDeviceArray((h,w,v), q_ptr)
-    λsq = λ^2
+    λsq = λ*λ
     λhalf = λ/2
 
-    if 1 < y < h && 1 < x < w && 1 < z < v
+    @inbounds if 1 < y < h && 1 < x < w && 1 < z < v
         q₁₋ = q[y-1,x,z]
         q₁₊ = q[y+1,x,z]
         q₂₋ = q[y,x-1,z]
