@@ -31,7 +31,8 @@ function simulate(f0, sim::Simulator{N,T}, domain::Domain{N}) where {N,T}
     backend = backend_init(sim.resource, domain, sim)
     state   = state_init(f0, backend, domain, sim)
     simulate!(state, backend, sim)
-    # backend_cleanup!(backend, state, sim)
+    backend_cleanup!(backend, state, sim)
+    state
 end
 
 function simulate(sim::Simulator{N,T}, domain::Domain{N}; f0 = (I...)->zero(T)) where {N,T}

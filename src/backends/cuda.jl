@@ -2,18 +2,14 @@ using CUDAdrv, CUDAnative
 
 struct CUDABackend{R<:CUDALibs} <: Backend{R}
     resource::R
-    device::CuDevice
-    context::CuContext
 end
 
 function backend_init(resource::CUDALibs, domain, sim)
-    dev = CuDevice(0)
-    ctx = CuContext(dev)
-    CUDABackend(resource, dev, ctx)
+    CUDABackend(resource)
 end
 
 function backend_cleanup!(backend::CUDABackend, state, sim)
-    destroy!(backend.context)
+    nothing
 end
 
 function move_backend(A::Array{T,N}, backend::CUDABackend) where {T<:Union{Float32,Float64},N}

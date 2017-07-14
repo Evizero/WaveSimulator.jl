@@ -4,6 +4,10 @@ using Base.Cartesian, ComputationalResources, TiledIteration, ProgressMeter
 
 export
 
+    CPU1,
+    CPUThreads,
+    CUDALibs,
+
     UniformWave,
     BoxDomain,
     Simulator,
