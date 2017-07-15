@@ -29,21 +29,17 @@ function update!(state::BoxState{2,T}, backend::CUDABackend, sim) where T
     xblocks = ceil(Int, w / threads[1])
     # shmem = 2 * prod(threads.+2) * sizeof(T)
     @cuda ((xblocks,yblocks),threads) cuda_kernel!(
-        pointer(state.previous), pointer(state.current),
-        pointer(state.q),
-        h, w,
+        state.previous, state.current, state.q,
         sim.wave.λ,
         state.box.γ)
     state
 end
 
-function cuda_kernel!(previous_ptr::Ptr{T}, current_ptr::Ptr{T}, q_ptr::Ptr, h::Int, w::Int, λ::T, γ::T) where T
+function cuda_kernel!(Ψₜ₋₁::CuDeviceArray{T,2}, Ψₜ::CuDeviceArray{T,2}, q::CuDeviceArray, λ::T, γ::T) where T
     y = (blockIdx().y-1) * blockDim().y + threadIdx().y
     x = (blockIdx().x-1) * blockDim().x + threadIdx().x
-    Ψₜ₋₁ = CuDeviceArray((h,w), previous_ptr)
-    Ψₜ   = CuDeviceArray((h,w), current_ptr)
-    Ψₜ₊₁ = CuDeviceArray((h,w), previous_ptr)
-    q    = CuDeviceArray((h,w), q_ptr)
+    h, w = size(Ψₜ₋₁)
+    Ψₜ₊₁ = Ψₜ₋₁ # store next state in previous
     eins = one(T)
     zwei = eins + eins
     λsq = λ*λ
@@ -77,22 +73,18 @@ function update!(state::BoxState{3,T}, backend::CUDABackend, sim) where T
     zblocks = ceil(Int, v / threads[3])
     #shmem = Int(2 * prod(threads.+2) * sizeof(T))
     @cuda ((xblocks,yblocks,zblocks),threads) cuda_kernel!(
-        pointer(state.previous), pointer(state.current),
-        pointer(state.q),
-        h, w, v,
+        state.previous, state.current, state.q,
         sim.wave.λ,
         state.box.γ)
     state
 end
 
-function cuda_kernel!(previous_ptr::Ptr{T}, current_ptr::Ptr{T}, q_ptr::Ptr, h::Int, w::Int, v::Int, λ::T, γ::T) where T
+function cuda_kernel!(Ψₜ₋₁::CuDeviceArray{T,3}, Ψₜ::CuDeviceArray{T,3}, q::CuDeviceArray, λ::T, γ::T) where T
     y = (blockIdx().y-1) * blockDim().y + threadIdx().y
     x = (blockIdx().x-1) * blockDim().x + threadIdx().x
     z = (blockIdx().z-1) * blockDim().z + threadIdx().z
-    Ψₜ₋₁ = CuDeviceArray((h,w,v), previous_ptr)
-    Ψₜ   = CuDeviceArray((h,w,v), current_ptr)
-    Ψₜ₊₁ = CuDeviceArray((h,w,v), previous_ptr)
-    q    = CuDeviceArray((h,w,v), q_ptr)
+    h, w, v = size(Ψₜ₋₁)
+    Ψₜ₊₁ = Ψₜ₋₁ # store next state in previous
     eins = one(T)
     zwei = eins + eins
     λsq = λ*λ
