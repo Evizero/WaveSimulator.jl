@@ -22,7 +22,7 @@ end
 
 # --------------------------------------------------------------------
 
-function update!(state::BoxState{2,T}, backend::CUDABackend, sim) where T
+function backend_update!(state::BoxState{2,T}, backend::CUDABackend, sim) where T
     h,w = size(state.current)
     threads = (32,32)
     yblocks = ceil(Int, h / threads[2])
@@ -65,7 +65,7 @@ end
 
 # --------------------------------------------------------------------
 
-function update!(state::BoxState{3,T}, backend::CUDABackend, sim) where T
+function backend_update!(state::BoxState{3,T}, backend::CUDABackend, sim) where T
     h,w,v = size(state.current)
     threads = (16,8,8)
     yblocks = ceil(Int, h / threads[2])

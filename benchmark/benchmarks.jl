@@ -27,7 +27,7 @@ using PkgBenchmark
                 samples = 10
             )
             @bench("update!",
-                WaveSimulator.update!(state, backend, sim),
+                WaveSimulator.update_backend!(state, backend, sim),
                 setup = begin
                     sim = Simulator($wave, resource=$(resource), duration=0.01)
                     domain = BoxDomain(6,8,4, gamma=0.05)

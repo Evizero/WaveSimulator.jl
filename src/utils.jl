@@ -11,7 +11,7 @@ function gauss(domain::Domain, var = 0.02)
     gauss([(size(domain)./2)...], var)
 end
 
-const tocolor = colorsigned(RGB{N0f8}(174/255,55/255,14/255),RGB{N0f8}(.99,.99,.99),RGB{N0f8}(5/255,105/255,97/255))
+const tocolor = colorsigned(RGBA{N0f8}(174/255,55/255,14/255,1.),RGBA{N0f8}(.99,.99,.99,0.),RGBA{N0f8}(5/255,105/255,97/255,1.))
 
 function toimage(state::State, scale = 2)
     mappedarray(i->tocolor(scalesigned(scale)(i)), state.current)

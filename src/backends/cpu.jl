@@ -6,7 +6,7 @@ function backend_init(resource::CPU1, domain, sim)
     CPU1Backend(resource)
 end
 
-function update!(state::State, backend::CPU1Backend, sim)
+function backend_update!(state::State, backend::CPU1Backend, sim)
     cpu_kernel!(state, backend.resource, sim)
 end
 
@@ -34,7 +34,7 @@ end
 
 move_backend(A::AbstractArray, backend::CPUBackend) = A
 
-function update!(state::State, backend::CPUThreadsBackend, sim)
+function backend_update!(state::State, backend::CPUThreadsBackend, sim)
     tiles = backend.tiles
     Threads.@threads for i = 1:length(tiles)
         inds = tiles[i]

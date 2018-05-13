@@ -1,6 +1,6 @@
 module WaveSimulator
 
-using Base.Cartesian, ComputationalResources, TiledIteration, ProgressMeter
+using Base.Cartesian, ComputationalResources, TiledIteration, ProgressMeter, ValueHistories
 
 export
 
@@ -14,6 +14,7 @@ export
     simulate,
     simulate_gauss,
     simulate!,
+    update!,
     toimage
 
 abstract type Domain{N} end
