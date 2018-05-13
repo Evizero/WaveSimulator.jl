@@ -23,6 +23,8 @@ A = res.current # 71×95×48 CUDAdrv.CuArray{Float64,3}
 toimage(Array(A), .6)[:,:,24]
 ```
 
+![acoustic field](https://user-images.githubusercontent.com/10854026/39971172-376db93c-56f7-11e8-96e2-2da7fd3e7b74.png)
+
 Simple signal response. Point speaker plays the sound in the
 right part of the room while a point microphone listens in the
 left part of the room. See implementation for details.
