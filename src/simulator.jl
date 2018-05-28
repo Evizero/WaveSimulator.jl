@@ -22,11 +22,11 @@ function update!(state::State, backend::Backend, sim::Simulator)
     state.previous, state.current = state.current, state.previous
     state.t    += sim.wave.dt
     state.iter += 1
-    simulator_init(state, sim)
+    foreach(hook -> hook_update!(hook, state, sim), sim.hooks)
 end
 
 function simulate!(state::State, backend::Backend, sim::Simulator)
-    foreach(hook -> hook_init!(hook, state, sim), sim.hooks)
+    simulator_init(state, sim)
     for _ in 1:sim.maxiter
         update!(state, backend, sim)
     end
