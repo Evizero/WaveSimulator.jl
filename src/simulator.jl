@@ -13,6 +13,10 @@ end
 
 # --------------------------------------------------------------------
 
+function simulator_init(state::State, sim::Simulator)
+    foreach(hook -> hook_init!(hook, state, sim), sim.hooks)
+end
+
 function update!(state::State, backend::Backend, sim::Simulator)
     backend_update!(state, backend, sim)
     state.previous, state.current = state.current, state.previous
@@ -22,7 +26,7 @@ function update!(state::State, backend::Backend, sim::Simulator)
 end
 
 function simulate!(state::State, backend::Backend, sim::Simulator)
-    foreach(hook -> hook_init!(hook, state, sim), sim.hooks)
+    simulator_init(state, sim)
     for _ in 1:sim.maxiter
         update!(state, backend, sim)
     end
