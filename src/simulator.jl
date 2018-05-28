@@ -13,12 +13,16 @@ end
 
 # --------------------------------------------------------------------
 
+function simulator_init(state::State, sim::Simulator)
+    foreach(hook -> hook_init!(hook, state, sim), sim.hooks)
+end
+
 function update!(state::State, backend::Backend, sim::Simulator)
     backend_update!(state, backend, sim)
     state.previous, state.current = state.current, state.previous
     state.t    += sim.wave.dt
     state.iter += 1
-    foreach(hook -> hook_update!(hook, state, sim), sim.hooks)
+    simulator_init(state, sim)
 end
 
 function simulate!(state::State, backend::Backend, sim::Simulator)
