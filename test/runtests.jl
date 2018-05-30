@@ -32,7 +32,6 @@ end
         f0 = WaveSimulator.gauss(domain)
         backend = WaveSimulator.backend_init(sim.resource, domain, sim)
         state = WaveSimulator.state_init(f0, backend, domain, sim)
-        
         # Simulation
         for i in 1:5
             simulate!(state, backend, sim)
@@ -45,6 +44,6 @@ end
     filter!((res,result)->!(res isa CPU1), test_results)
     for resource in keys(test_results)
         info("Comparing CPU1 to $(resource)")
-        @test isapprox(cpu1_result, test_results[resource])
+        @test isapprox(cpu1_result, Array(test_results[resource]))
     end
 end
