@@ -8,3 +8,5 @@ Distributions
 MappedArrays
 Colors
 FixedPointNumbers
+CUDAnative
+CUDAdrv
