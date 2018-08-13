@@ -28,7 +28,7 @@ function backend_update!(state::BoxState{2,T}, backend::CUDABackend, sim) where 
     yblocks = ceil(Int, h / threads[2])
     xblocks = ceil(Int, w / threads[1])
     # shmem = 2 * prod(threads.+2) * sizeof(T)
-    @cuda ((xblocks,yblocks),threads) cuda_kernel!(
+    @cuda blocks=(xblocks,yblocks) threads=threads cuda_kernel!(
         state.previous, state.current, state.q,
         sim.wave.λ,
         state.box.γ)
@@ -72,7 +72,7 @@ function backend_update!(state::BoxState{3,T}, backend::CUDABackend, sim) where 
     xblocks = ceil(Int, w / threads[1])
     zblocks = ceil(Int, v / threads[3])
     #shmem = Int(2 * prod(threads.+2) * sizeof(T))
-    @cuda ((xblocks,yblocks,zblocks),threads) cuda_kernel!(
+    @cuda blocks=(xblocks,yblocks,zblocks) threads=threads cuda_kernel!(
         state.previous, state.current, state.q,
         sim.wave.λ,
         state.box.γ)
