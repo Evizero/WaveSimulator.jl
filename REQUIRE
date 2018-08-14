@@ -3,3 +3,10 @@ ComputationalResources
 TiledIteration
 ProgressMeter
 ValueHistories
+ImageCore
+Distributions
+MappedArrays
+Colors
+FixedPointNumbers
+CUDAnative
+CUDAdrv
