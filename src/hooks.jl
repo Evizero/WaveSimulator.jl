@@ -98,6 +98,36 @@ end
 
 # --------------------------------------------------------------------
 
+mutable struct StreamingPointMicrophone{N,F}
+    position::NTuple{N,Float64}
+    gridpos::NTuple{N,Int}
+    callback::F
+end
+
+function StreamingPointMicrophone(callback::F, position::Vararg{Number,N}) where {N,F}
+    position = Float64.(position)
+    gridpos = tuple(zeros(Int, N)...)
+    StreamingPointMicrophone(position, gridpos, callback)
+end
+
+function hook_init!(hook::StreamingPointMicrophone, state::State{N,T}, sim::Simulator) where {N,T}
+    hook.gridpos = floor.(Int, hook.position ./ sim.wave.dx) .+ 1
+    hook
+end
+
+function hook_update!(hook::StreamingPointMicrophone, state::State{N}, sim::Simulator) where N
+    hook.callback(state.current[hook.gridpos...], (hook, state, sim))
+    hook
+end
+
+function hook_reposition!(hook::StreamingPointMicrophone, state::State{N}, sim::Simulator, position::NTuple{N,Number}) where N
+    hook.position = Float64.(position)
+    hook.gridpos = floor.(Int, hook.position ./ sim.wave.dx) .+ 1
+    hook
+end
+
+# --------------------------------------------------------------------
+
 mutable struct PointSpeaker{N,S<:AbstractVector}
     position::NTuple{N,Float64}
     gridpos::NTuple{N,Int}
@@ -120,5 +150,35 @@ function hook_update!(hook::PointSpeaker, state::State{N}, sim::Simulator) where
     if state.iter <= length(hook.signal)
         state.current[hook.gridpos...] = hook.signal[state.iter]
     end
+    hook
+end
+
+# --------------------------------------------------------------------
+
+mutable struct StreamingPointSpeaker{N,F}
+    position::NTuple{N,Float64}
+    gridpos::NTuple{N,Int}
+    callback::F
+end
+
+function StreamingPointSpeaker(callback::F, position::Vararg{Number,N}) where {N,F}
+    position = Float64.(position)
+    gridpos = tuple(zeros(Int, N)...)
+    StreamingPointSpeaker(position, gridpos, callback)
+end
+
+function hook_init!(hook::StreamingPointSpeaker, state::State{N,T}, sim::Simulator) where {N,T}
+    hook.gridpos = floor.(Int, hook.position ./ sim.wave.dx) .+ 1
+    hook
+end
+
+function hook_update!(hook::StreamingPointSpeaker, state::State{N,T}, sim::Simulator) where {N,T}
+    state.current[hook.gridpos...] = hook.callback((hook, state, sim))
+    hook
+end
+
+function hook_reposition!(hook::StreamingPointSpeaker, state::State{N}, sim::Simulator, position::NTuple{N,Number}) where N
+    hook.position = Float64.(position)
+    hook.gridpos = floor.(Int, hook.position ./ sim.wave.dx) .+ 1
     hook
 end
