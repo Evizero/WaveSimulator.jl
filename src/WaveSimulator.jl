@@ -29,6 +29,9 @@ include("boxdomain.jl")
 include("utils.jl")
 include("hooks.jl")
 include("backends/cpu.jl")
-include("backends/cuda.jl")
+using CUDAapi
+if has_cuda()
+    include("backends/cuda.jl")
+end
 
 end
