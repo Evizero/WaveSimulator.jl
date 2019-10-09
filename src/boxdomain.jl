@@ -26,13 +26,13 @@ end
 function state_init(f0, backend::Backend, box::BoxDomain{N}, sim::Simulator{N,T}) where {N,T}
     dims = gridsize(box, sim.wave.dx)
     A = zeros(T, dims)
-    for I in CartesianRange(CartesianIndex(ntuple(i->2, Val{N})), CartesianIndex(dims .- 1))
+    for I in CartesianIndices(ntuple(i->2:(dims[i]-1), N))
         A[I] = T(f0(((I.I.-1).*sim.wave.dx)...))
     end
     Ψ₀ = move_backend(A, backend)
     Ψ₁ = move_backend(copy(A), backend)
     qhost = zeros(Int8, dims)
-    for I in CartesianRange(CartesianIndex(ntuple(i->2, Val{N})), CartesianIndex(size(qhost) .- 1))
+    for I in CartesianIndices(ntuple(i->2:(size(qhost)[i]-1), N))
         qhost[I] = Int8(1)
     end
     q = move_backend(qhost, backend)
@@ -44,7 +44,7 @@ function state_init(backend::Backend, box::BoxDomain{N}, sim::Simulator{N,T}) wh
     Ψ₀ = move_backend(zeros(T, dims), backend)
     Ψ₁ = move_backend(zeros(T, dims), backend)
     qhost = zeros(Int8, dims)
-    for I in CartesianRange(CartesianIndex(ntuple(i->3, Val{N})), CartesianIndex(size(qhost) .- 1))
+    for I in CartesianIndices(ntuple(i->3:(size(qhost)[i]-1), N))
         qhost[I] = Int8(1)
     end
     q = move_backend(qhost, backend)

@@ -60,7 +60,7 @@ function hook_update!(hook::StoreSnapshots, state::State{N}, sim::Simulator) whe
     if state.t - (hook.last + hook.dt) >= 0
         if hook.index <= size(hook.snapshots, ndims(hook.snapshots))
             copy!(hook.buffer, state.current)
-            copy!(view(hook.snapshots, ntuple(_->:,Val{N})..., hook.index), hook.buffer)
+            copy!(view(hook.snapshots, ntuple(_->:,N)..., hook.index), hook.buffer)
             hook.index += 1
         end
         hook.last = state.t
